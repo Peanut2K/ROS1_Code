@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <title>🐢 TurtleBot3 Navigation Panel</title>
+  <script src="https://cdn.jsdelivr.net/npm/roslib@1.3.0/build/roslib.min.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: linear-gradient(135deg, #e0f7fa, #e8f5e9);
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      padding: 30px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 28px;
+      color: #00796b;
+      margin-bottom: 10px;
+    }
+
+    h3 {
+      color: #555;
+      margin-top: 25px;
+    }
+
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    button {
+      background: #00796b;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 15px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    button:hover {
+      background: #004d40;
+      transform: translateY(-2px);
+    }
+
+    #log {
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      background-color: #f9f9f9;
+      padding: 12px;
+      height: 180px;
+      overflow-y: auto;
+      text-align: left;
+      margin-top: 20px;
+      font-size: 14px;
+      white-space: pre-line;
+    }
+
+    .footer {
+      margin-top: 25px;
+      color: #777;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🐢 TurtleBot3 Web Navigation</h1>
+    <h3>ส่งคำสั่งให้หุ่นยนต์เดินไปยังจุด:</h3>
+
+    <div class="btn-grid">
+      <button onclick="sendGoal('home')">🏠 จุดเริ่มต้น (Home)</button>
+      <button onclick="sendGoal('table1')">โต๊ะ 1</button>
+      <button onclick="sendGoal('table2')">โต๊ะ 2</button>
+      <button onclick="sendGoal('table3')">โต๊ะ 3</button>
+      <button onclick="sendGoal('table4')">โต๊ะ 4</button>
+    </div>
+
+    <h3>Log:</h3>
+    <div id="log">--- System Log ---</div>
+
+    <div class="footer">
+      <p>🚀 Powered by Group 2</p>
+    </div>
+  </div>
+
+  <script>
+    // ✅ จุดที่หุ่นยนต์สามารถไปได้
+    var waypoints = {
+      home:   { x: 0.0,  y: 0.0,  z_orient: 0.0,  w_orient: 1.0 },
+      table1: { x: 1.1,  y: 0.0,  z_orient: 0.707, w_orient: 0.707 },
+      table2: { x: 0.06, y: 1.84,  z_orient: 0.0,   w_orient: -1.0 },
+      table3: { x: 2.0,  y: -1.5, z_orient: 0.5,   w_orient: 0.866 },
+      table4: { x: -2.0, y: -1.2, z_orient: 0.707, w_orient: 0.707 }
+    };
+
+    function log(text) {
+      const logDiv = document.getElementById('log');
+      logDiv.textContent += "\n" + text;
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function sendGoal(name) {
+      const point = waypoints[name];
+      if (!point) return log(`❗ Error: Goal '${name}' not found.`);
+
+      const goalMsg = new ROSLIB.Message({
+        header: { stamp: { secs: 0, nsecs: 0 }, frame_id: 'map' },
+        pose: {
+          position: { x: point.x, y: point.y, z: 0.0 },
+          orientation: { x: 0.0, y: 0.0, z: point.z_orient, w: point.w_orient }
+        }
+      });
+
+      goalPublisher.publish(goalMsg);
+      log(`🧭 ส่งคำสั่งไปยัง "${name}" (X:${point.x.toFixed(2)}, Y:${point.y.toFixed(2)})`);
+    }
+
+    // ✅ การเชื่อมต่อ ROS
+    var ROSBRIDGE_IP = "172.20.10.8";
+    var ROSBRIDGE_PORT = 9090;
+
+    var ros = new ROSLIB.Ros({
+      url: `ws://${ROSBRIDGE_IP}:${ROSBRIDGE_PORT}`
+    });
+
+    ros.on('connection', () => log(`✅ Connected to ROSBridge (${ROSBRIDGE_IP}:${ROSBRIDGE_PORT})`));
+    ros.on('error', (error) => log(`❌ Connection error: ${error}`));
+    ros.on('close', () => log(`⚠️ Disconnected from ROSBridge.`));
+
+    var goalPublisher = new ROSLIB.Topic({
+      ros: ros,
+      name: '/move_base_simple/goal',
+      messageType: 'geometry_msgs/PoseStamped'
+    });
+  </script>
+</body>
+</html>
